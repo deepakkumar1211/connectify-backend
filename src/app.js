@@ -34,4 +34,11 @@ app.use("/api/v1/users", userRouter)
 //https://localhost:8000/api/v1/users/login
 
 
+app.get("/", (req, res) => {
+    res.json({
+        message: "deepak"
+    })
+})
+
+
 export { app }
