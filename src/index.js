@@ -18,3 +18,10 @@ connectDB()
     console.log("Mongo DB connection failed !!!", err);
     
 })
+
+
+app.get("/", (req, res) => {
+    res.json({
+        message: "deepak"
+    })
+})
