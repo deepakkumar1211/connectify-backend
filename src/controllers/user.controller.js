@@ -157,15 +157,15 @@ const loginUser = asyncHandler(async (req,res) => {
 
     const {email, username, password} = req.body
 
-    if (!username && !email) {
-        throw new Error(400, "username or email is required");
-    }
+    // if (!username && !email) {
+    //     throw new Error(400, "username or email is required");
+    // }
 
 
     // here is an alternative of above code baded on logic discussed in video
-    // if (!(username || email)) {
-    //     throw new Error(400, "username or email is required");
-    // }
+    if (!(username || email)) {
+        throw new Error(400, "username or email is required");
+    }
 
 
     const user = await User.findOne({
