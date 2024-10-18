@@ -2,9 +2,11 @@ import dotenv from "dotenv"
 import { app } from "./app.js";
 import connectDB from "./db/index.js";
 
-dotenv.config({
-    path: './.env'
-})
+// dotenv.config({
+//     path: './.env'
+// })
+
+dotenv.config()
 
 
 // Database connection
@@ -20,11 +22,11 @@ connectDB()
     })
 
 
-// app.get("/", (req, res) => {
-//     res.json({
-//         message: "deepak"
-//     })
-// })
+app.get("/", (req, res) => {
+    res.json({
+        message: "deepak"
+    })
+})
 
 
 
