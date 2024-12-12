@@ -3,10 +3,12 @@ import mongoose, {Schema} from "mongoose";
 
 const postSchema = new Schema(
     {
-        postFile: {
-            type: String, // cloudinary url
-            required: true
-        },
+        postFile: [
+            {
+                type: String, // cloudinary url
+                required: true
+            }
+        ],
         description: {
             type: String,
             required: true
