@@ -5,6 +5,7 @@ class ApiError extends Error{
         errors = [],
         stack = ""
     ){
+        // here we are overriding existing things, super is used for override and super(message), message means it is neccessary to override message
         super(message)
         this.statusCode = statusCode
         this.data = null

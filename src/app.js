@@ -34,6 +34,10 @@ app.use("/api/v1/users", userRouter)
 //https://localhost:8000/api/v1/users/login
 
 
+// import post routes
+import postRouter from "./routes/post.routes.js"
+app.use("/api/v1/posts", postRouter)
+
 app.get("/", (req, res) => {
     res.json({
         message: "deepak"

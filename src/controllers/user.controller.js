@@ -143,7 +143,7 @@ const logoutUser = asyncHandler(async (req, res) => {
             }
         },
         {
-            new: true // it gives new updated data from database
+            new: true 
         }
     )
 
@@ -252,7 +252,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     }
 
     // req.user?.id => it comes from auth.middleware
-    const user = User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {

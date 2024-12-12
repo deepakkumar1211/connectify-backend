@@ -47,6 +47,6 @@ videoSchema.plugin(mongooseAggregatePaginate)
 
 export const Video = mongoose.model("Video", videoSchema)
 
-// agregatepagi
+// agregatepaginate
 //bcrypt
 // jsonwebtoken
