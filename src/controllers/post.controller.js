@@ -42,8 +42,8 @@ const createPost = asyncHandler(async (req, res) => {
 
 const getAllPosts = asyncHandler (async (req, res) => {
     try {
-        const posts = await Post.find();
-
+        // const posts = await Post.find();
+        const posts = await Post.find().sort({ createdAt: -1 }); // get data in reverse order
         if (!posts || posts.length === 0) {
             throw new ApiError(404, "No posts found");
         }
