@@ -97,24 +97,79 @@ const createPost = asyncHandler(async (req, res) => {
 
 
 
-const getAllPosts = asyncHandler (async (req, res) => {
+// const getAllPosts = asyncHandler (async (req, res) => {
+//     try {
+//         // const posts = await Post.find();
+//         const posts = await Post.find().sort({ createdAt: -1 }); // get data in reverse order
+//         if (!posts || posts.length === 0) {
+//             throw new ApiError(404, "No posts found");
+//         }
+
+//         return res
+//             .status(200)
+//             .json(new ApiResponse(200, posts, "Posts retrieved successfully"));
+
+//     } catch (error) {
+//         return res
+//             .status(error.statusCode || 500)
+//             .json(new ApiResponse(error.statusCode || 500, {}, error.message || "An error occurred"));
+//     }
+// })
+
+
+const getAllPosts = asyncHandler(async (req, res) => {
     try {
-        // const posts = await Post.find();
-        const posts = await Post.find().sort({ createdAt: -1 }); // get data in reverse order
+        const posts = await Post.aggregate([
+            {
+                $sort: { createdAt: -1 }, // Sort posts in reverse order
+            },
+            {
+                $lookup: { // Join User collection
+                    from: "users",
+                    localField: "owner", // The field in Post referring to User
+                    foreignField: "_id", // The field in User being referred to
+                    as: "userDetails", // Output array field for user data
+                },
+            },
+            {
+                $unwind: "$userDetails", // Flatten the userDetails array
+            },
+            {
+                $project: { // Select necessary fields
+                    _id: 1,
+                    postFile: 1,
+                    description: 1,
+                    likes: 1,
+                    owner: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    username: "$userDetails.username",
+                    fullName: "$userDetails.fullName",
+                    avatar: "$userDetails.avatar",
+                },
+            },
+        ]);
+
         if (!posts || posts.length === 0) {
             throw new ApiError(404, "No posts found");
         }
 
-        return res
-            .status(200)
-            .json(new ApiResponse(200, posts, "Posts retrieved successfully"));
 
+        return res.status(200).json({
+            statusCode: 200,
+            data: posts,
+            message: "Posts retrieved successfully",
+            success: true,
+        });
     } catch (error) {
-        return res
-            .status(error.statusCode || 500)
-            .json(new ApiResponse(error.statusCode || 500, {}, error.message || "An error occurred"));
+        return res.status(error.statusCode || 500).json({
+            statusCode: error.statusCode || 500,
+            data: [],
+            message: error.message || "An error occurred",
+            success: false,
+        });
     }
-})
+});
 
 
 export {
