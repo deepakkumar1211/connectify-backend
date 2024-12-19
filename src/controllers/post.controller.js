@@ -1,4 +1,5 @@
 import { Post } from "../models/post.model.js";
+import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -45,6 +46,19 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 const createPost = asyncHandler(async (req, res) => {
     const { description } = req.body;
 
+     // Check if the authenticated user's ID is available
+     const ownerId = req.user?.id; // Assuming `req.user` is populated via middleware
+
+    if (!ownerId) {
+        return res.status(400).json({ message: "Owner (user ID) is required." });
+    }
+
+    // Validate user existence
+    const userExists = await User.findById(ownerId);
+    if (!userExists) {
+        return res.status(404).json({ message: "User not found." });
+    }
+
     // Validate description
     if (!description) {
         throw new ApiError(400, "Description is required");
@@ -67,6 +81,7 @@ const createPost = asyncHandler(async (req, res) => {
     const post = await Post.create({
         description,
         postFile: postfile.url,
+        owner: ownerId || "" // Attach the owner's ID to the post
     });
 
     // Retrieve the created post
