@@ -38,6 +38,10 @@ app.use("/api/v1/users", userRouter)
 import postRouter from "./routes/post.routes.js"
 app.use("/api/v1/posts", postRouter)
 
+// stroy router
+import storyRouter from "./routes/story.routes.js"
+app.use("/api/v1/story", storyRouter)
+
 app.get("/", (req, res) => {
     res.json({
         message: "deepak"
