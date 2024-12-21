@@ -6,8 +6,9 @@ import {upload} from "../middlewares/multer.middleware.js"
 
 const router = Router()
 
-router.route("/create-post").post(verifyJWT,
-    upload.single("postMedia"), // please give this name (postMedia) during sending request on Postman postMedia: filename.jpg
+router.route("/create-post").post(
+    verifyJWT,
+    upload.array("postMedia", 10), // Accept up to 10 files with the key "postMedia", // please give this name (postMedia) during sending request on Postman postMedia: filename.jpg
     createPost
 )
 

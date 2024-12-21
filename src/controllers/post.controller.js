@@ -64,24 +64,39 @@ const createPost = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Description is required");
     }
 
-    // Validate uploaded file
-    const fileBuffer = req.file?.buffer;
-    if (!fileBuffer) {
+    // Validate uploaded files
+    const files = req.files; // Multer adds `req.files` for multiple files
+    const mediaUrls = [];
+
+    if (!files) {
         throw new ApiError(400, "Post file is required");
     }
 
-    // Upload file to Cloudinary
-    const postfile = await uploadOnCloudinary(fileBuffer, req.file.mimetype); // Ensure Cloudinary handles the buffer and mimetype
+    if (files && files.length > 0) {
+            for (const file of files) {
+                try {
+                    // Upload each file to Cloudinary
+                    const uploadedMedia = await uploadOnCloudinary(file.buffer, file.mimetype);
 
-    if (!postfile || !postfile.url) {
-        throw new ApiError(500, "Failed to upload the post file to Cloudinary");
+                    if (!uploadedMedia || !uploadedMedia.url) {
+                        throw new ApiError(500, "Failed to upload a media file to Cloudinary.")
+                    }
+
+                    // Push each uploaded media URL to the mediaUrls array
+                    mediaUrls.push(uploadedMedia.url);
+                } catch (error) {
+                    throw new ApiError(400, "Cloudinary upload failed.")
+                }
+            }
+    } else {
+        throw new ApiError(400, "At least one media file is required.")
     }
 
     // Create the post
     const post = await Post.create({
         description,
-        postFile: postfile.url,
-        owner: ownerId || "" // Attach the owner's ID to the post
+        postFile: mediaUrls,
+        owner: ownerId
     });
 
     // Retrieve the created post
