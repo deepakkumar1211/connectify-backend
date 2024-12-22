@@ -6,7 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 
-const postStatus = asyncHandler(async (req, res) => {
+const postStory = asyncHandler(async (req, res) => {
     try {
         const { description, visibility } = req.body;
 
@@ -69,6 +69,55 @@ const postStatus = asyncHandler(async (req, res) => {
 });
 
 
+const getStory = asyncHandler(async (req, res) => {
+    try {
+        const story = await Story.aggregate([
+            {
+                $sort: { createdAt: -1 }, // Sort posts in reverse order
+            },
+            {
+                $lookup: { // Join User collection
+                    from: "users",
+                    localField: "storyOwner", // The field in Post referring to User
+                    foreignField: "_id", // The field in User being referred to
+                    as: "userDetails", // Output array field for user data
+                },
+            },
+            {
+                $unwind: "$userDetails", // Flatten the userDetails array
+            },
+            {
+                $project: { // Select necessary fields
+                    _id: 1,
+                    postFile: 1,
+                    description: 1,
+                    likes: 1,
+                    storyOwner: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    viewers: 1,
+                    username: "$userDetails.username",
+                    fullName: "$userDetails.fullName",
+                    avatar: "$userDetails.avatar",
+                },
+            },
+        ]);
+
+        if (!story || story.length === 0) {
+            throw new ApiError(404, "No posts found");
+        }
+
+
+        return res.status(200).json(
+            new ApiResponse(200, story, "Story retrieved successfully")
+        );
+    } catch (error) {
+        throw new ApiError(500, "An error occured")
+    }
+});
+
+
 export {
-    postStatus,
+    postStory,
+    getStory
 }
