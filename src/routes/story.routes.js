@@ -1,6 +1,5 @@
 import { Router } from "express";
-import {postStory} from "../controllers/story.controller.js"
-import {getStory} from "../controllers/story.controller.js"
+import {postStory, deleteStory, getStory} from "../controllers/story.controller.js"
 
 import {verifyJWT} from "../middlewares/auth.middleware.js"
 import {upload} from "../middlewares/multer.middleware.js"
@@ -14,5 +13,8 @@ router.route("/post-story").post(verifyJWT,
 
 
 router.route("/get-story").get(verifyJWT,getStory)
+
+// Route to delete a specific story by ID
+router.route("/delete-story/:storyId").delete(verifyJWT, deleteStory);
 
 export default router

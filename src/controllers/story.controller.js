@@ -117,7 +117,76 @@ const getStory = asyncHandler(async (req, res) => {
 });
 
 
+
+import mongoose from "mongoose";
+
+const deleteStory = asyncHandler(async (req, res) => {
+    try {
+        const { storyId } = req.params;
+
+        // Validate the storyId
+        if (!mongoose.Types.ObjectId.isValid(storyId)) {
+            throw new ApiError(400, "Invalid Story ID.");
+        }
+
+        // Check if the story exists
+        const story = await Story.findById(storyId);
+        if (!story) {
+            throw new ApiError(404, "Story not found.");
+        }
+
+        // Check if the story belongs to the authenticated user
+        if (String(story.storyOwner) !== String(req.user.id)) {
+            throw new ApiError(403, "You are not authorized to delete this story.");
+        }
+
+        // Delete from Cloudinary
+        const { postFilePublicId } = story;
+        if (postFilePublicId) {
+            const cloudinaryResult = await deleteFromCloudinary(postFilePublicId);
+            if (!cloudinaryResult.success) {
+                throw new ApiError(500, "Failed to delete story file from Cloudinary.");
+            }
+        }
+
+        // Delete from database
+        await Story.deleteOne({ _id: storyId });
+
+        return res.status(200).json(
+            new ApiResponse(200, {}, "Story deleted successfully.")
+        );
+    } catch (error) {
+        console.error("Error in deleteStory:", error);
+        return res.status(500).json(
+            new ApiResponse(500, {}, "Error in deleteStory.")
+        );
+    }
+});
+
+
+import { v2 as cloudinary } from "cloudinary";
+// Cloudinary configuration
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+export const deleteFromCloudinary = async (publicId) => {
+    try {
+        // console.log("Public ID to delete:", publicId);
+        const result = await cloudinary.uploader.destroy(publicId);
+        // console.log("Cloudinary response:", result);
+        return { success: true, result };
+    } catch (error) {
+        console.error("Error deleting file from Cloudinary:", error);
+        return { success: false, error };
+    }
+};
+
+
+
 export {
     postStory,
-    getStory
+    getStory,
+    deleteStory
 }
