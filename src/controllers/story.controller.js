@@ -3,7 +3,8 @@ import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+import mongoose from "mongoose";
 
 
 const postStory = asyncHandler(async (req, res) => {
@@ -118,7 +119,6 @@ const getStory = asyncHandler(async (req, res) => {
 
 
 
-import mongoose from "mongoose";
 
 const deleteStory = asyncHandler(async (req, res) => {
     try {
@@ -162,27 +162,6 @@ const deleteStory = asyncHandler(async (req, res) => {
         );
     }
 });
-
-
-import { v2 as cloudinary } from "cloudinary";
-// Cloudinary configuration
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-export const deleteFromCloudinary = async (publicId) => {
-    try {
-        // console.log("Public ID to delete:", publicId);
-        const result = await cloudinary.uploader.destroy(publicId);
-        // console.log("Cloudinary response:", result);
-        return { success: true, result };
-    } catch (error) {
-        console.error("Error deleting file from Cloudinary:", error);
-        return { success: false, error };
-    }
-};
-
 
 
 export {

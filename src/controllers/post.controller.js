@@ -3,7 +3,8 @@ import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+import mongoose from "mongoose";
 
 // const createPost = asyncHandler(async (req, res) => {
     
@@ -187,7 +188,58 @@ const getAllPosts = asyncHandler(async (req, res) => {
 });
 
 
+const deletePost = asyncHandler(async (req, res) => {
+    try {
+        const { postId } = req.params;
+
+        // Validate postId
+        if (!mongoose.Types.ObjectId.isValid(postId)) {
+            throw new ApiError(400, "Invalid Post ID.");
+        }
+
+        // Check if the post exists
+        const post = await Post.findById(postId);
+        if (!post) {
+            throw new ApiError(404, "Post not found.");
+        }
+
+        // Check if the post belongs to the authenticated user
+        if (String(post.owner) !== String(req.user.id)) {
+            throw new ApiError(403, "You are not authorized to delete this post.");
+        }
+
+        // Delete all images from Cloudinary
+        if (post.publicIds && post.publicIds.length > 0) {
+            const failedDeletes = [];
+            for (const publicId of post.publicIds) {
+                const result = await deleteFromCloudinary(publicId);
+                if (!result.success) {
+                    failedDeletes.push(publicId); // Track any failed deletions
+                }
+            }
+
+            if (failedDeletes.length > 0) {
+                throw new ApiError(500, `Failed to delete some files: ${failedDeletes.join(", ")}`);
+            }
+        }
+
+        // Delete the post from the database
+        await Post.deleteOne({ _id: postId });
+
+        return res.status(200).json(
+            new ApiResponse(200, {}, "Post and associated images deleted successfully.")
+        );
+    } catch (error) {
+        console.error("Error in deletePost:", error);
+        return res.status(500).json(
+            new ApiResponse(500, {}, "Error in deletePost.")
+        );
+    }
+});
+
+
 export {
     createPost,
-    getAllPosts
+    getAllPosts,
+    deletePost
 }
