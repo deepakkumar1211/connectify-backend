@@ -72,14 +72,14 @@ const postStory = asyncHandler(async (req, res) => {
 
 const getStory = asyncHandler(async (req, res) => {
     try {
-        const story = await Story.aggregate([
+        const stories = await Story.aggregate([
             {
-                $sort: { createdAt: -1 }, // Sort posts in reverse order
+                $sort: { createdAt: -1 }, // Sort stories by creation time
             },
             {
                 $lookup: { // Join User collection
                     from: "users",
-                    localField: "storyOwner", // The field in Post referring to User
+                    localField: "storyOwner", // The field in Story referring to User
                     foreignField: "_id", // The field in User being referred to
                     as: "userDetails", // Output array field for user data
                 },
@@ -88,32 +88,48 @@ const getStory = asyncHandler(async (req, res) => {
                 $unwind: "$userDetails", // Flatten the userDetails array
             },
             {
-                $project: { // Select necessary fields
-                    _id: 1,
-                    postFile: 1,
-                    description: 1,
-                    likes: 1,
-                    storyOwner: 1,
-                    createdAt: 1,
-                    updatedAt: 1,
-                    viewers: 1,
-                    username: "$userDetails.username",
-                    fullName: "$userDetails.fullName",
-                    avatar: "$userDetails.avatar",
+                $group: { // Group stories by user
+                    _id: "$storyOwner",
+                    username: { $first: "$userDetails.username" },
+                    fullName: { $first: "$userDetails.fullName" },
+                    avatar: { $first: "$userDetails.avatar" },
+                    stories: {
+                        $push: {
+                            _id: "$_id",
+                            postFile: "$postFile",
+                            description: "$description",
+                            createdAt: "$createdAt",
+                            updatedAt: "$updatedAt",
+                            viewers: "$viewers",
+                        },
+                    },
+                },
+            },
+            {
+                $project: { // Format the response
+                    _id: 0,
+                    storyOwner:"$_id", 
+                    username: 1,
+                    fullName: 1,
+                    avatar: 1,
+                    stories: 1,
                 },
             },
         ]);
 
-        if (!story || story.length === 0) {
-            throw new ApiError(404, "No posts found");
+        if (!stories || stories.length === 0) {
+            throw new ApiError(404, "No stories found");
         }
 
-
-        return res.status(200).json(
-            new ApiResponse(200, story, "Story retrieved successfully")
-        );
+        return res.status(200).json({
+            statusCode: 200,
+            data: stories,
+            message: "Stories retrieved successfully",
+            success: true,
+        });
     } catch (error) {
-        throw new ApiError(500, "An error occured")
+        console.error("Error in getStory:", error);
+        throw new ApiError(500, "An error occurred while retrieving stories");
     }
 });
 
