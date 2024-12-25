@@ -280,16 +280,17 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
 // update user avatar
 const updateUserAvatar = asyncHandler(async (req, res)=> {
-    const avatarLocalPath = req.file?.path
+    // Validate uploaded file
+    const fileBuffer = req.file?.buffer;
 
-    if (!avatarLocalPath) {
-        throw new ApiError(400, "Avatar file is missing")
+    if (!fileBuffer) {
+        throw new ApiError(400, "Avatar image is required");
     }
 
-    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    const avatar = await uploadOnCloudinary(fileBuffer, req.file.mimetype);
 
     if (!avatar.url) {
-        throw new ApiError(400, "Error while uploading on avatar")
+        throw new ApiError(400, "Error while uploading on Avatar image")
     }
 
     const user = await User.findByIdAndUpdate(
@@ -313,13 +314,15 @@ const updateUserAvatar = asyncHandler(async (req, res)=> {
 
 // update user cover Image
 const updateUserCoverImage = asyncHandler(async (req, res)=> {
-    const coverImageLocalPath = req.file?.path
+    
+    // Validate uploaded file
+    const fileBuffer = req.file?.buffer;
 
-    if (!coverImageLocalPath) {
-        throw new ApiError(400, "Cover image file is missing")
+    if (!fileBuffer) {
+        throw new ApiError(400, "coverImage image is required");
     }
 
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+    const coverImage = await uploadOnCloudinary(fileBuffer, req.file.mimetype);
 
     if (!coverImage.url) {
         throw new ApiError(400, "Error while uploading on cover image")
