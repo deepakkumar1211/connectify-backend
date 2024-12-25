@@ -308,8 +308,7 @@ const updateUserAvatar = asyncHandler(async (req, res)=> {
     .json(
         new ApiResponse(200, user, "Avatar updated Successfully")
     )
-
-})
+});
 
 
 // update user cover Image
@@ -343,8 +342,7 @@ const updateUserCoverImage = asyncHandler(async (req, res)=> {
     .json(
         new ApiResponse(200, user, "Cover Image updated Successfully")
     )
-
-})
+});
 
 
 export {
