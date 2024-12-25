@@ -1,7 +1,7 @@
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {ApiError} from "../utils/ApiError.js"
 import {User} from "../models/user.model.js"
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 
@@ -287,21 +287,35 @@ const updateUserAvatar = asyncHandler(async (req, res)=> {
         throw new ApiError(400, "Avatar image is required");
     }
 
+    // Fetch current user data
+    const user = await User.findById(req.user?.id).select("-password -refreshToken");
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    // Delete existing avatar from Cloudinary if it exists
+    if (user.avatar) {
+        const publicId = extractPublicId(user.avatar); // Assuming extractPublicId gets the Cloudinary public ID
+        try {
+            await deleteFromCloudinary(publicId);
+        } catch (error) {
+            console.error(`Error deleting file from Cloudinary: ${JSON.stringify(error)}`);
+            return res.status(500).json(
+                new ApiResponse(500, null, `Failed to delete existing avatar: ${error.message}`)
+            );
+        }
+    }
+
+    // Upload new avatar
     const avatar = await uploadOnCloudinary(fileBuffer, req.file.mimetype);
 
     if (!avatar.url) {
-        throw new ApiError(400, "Error while uploading on Avatar image")
+        throw new ApiError(500, "Error while uploading on Avatar image")
     }
 
-    const user = await User.findByIdAndUpdate(
-        req.user?.id,
-        {
-            $set: {
-                avatar: avatar.url
-            }
-        },
-        {new: true}
-    ).select("-password")
+    // Update user with new avatar
+    user.avatar = avatar.url;
+    await user.save();
 
     return res
     .status(200)
@@ -321,21 +335,34 @@ const updateUserCoverImage = asyncHandler(async (req, res)=> {
         throw new ApiError(400, "coverImage image is required");
     }
 
+    // Fetch current user data
+    const user = await User.findById(req.user?.id).select("-password -refreshToken");
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    // Delete existing avatar from Cloudinary if it exists
+    if (user.coverImage) {
+        const publicId = extractPublicId(user.coverImage); // Assuming extractPublicId gets the Cloudinary public ID
+        try {
+            await deleteFromCloudinary(publicId);
+        } catch (error) {
+            console.error(`Error deleting file from Cloudinary: ${JSON.stringify(error)}`);
+            return res.status(500).json(
+                new ApiResponse(500, null, `Failed to delete existing coverImage`)
+            );
+        }
+    }
+
     const coverImage = await uploadOnCloudinary(fileBuffer, req.file.mimetype);
 
     if (!coverImage.url) {
-        throw new ApiError(400, "Error while uploading on cover image")
+        throw new ApiError(500, "Error while uploading on cover image")
     }
 
-    const user = await User.findByIdAndUpdate(
-        req.user?.id,  // req.user comes from auth middleware
-        {
-            $set: {
-                coverImage: coverImage.url
-            }
-        },
-        {new: true}
-    ).select("-password")
+    // Update user with new cover Image
+    user.coverImage = coverImage.url;
+    await user.save();
 
     return res
     .status(200)
@@ -343,6 +370,13 @@ const updateUserCoverImage = asyncHandler(async (req, res)=> {
         new ApiResponse(200, user, "Cover Image updated Successfully")
     )
 });
+
+// Helper function to extract public ID from Cloudinary URL
+function extractPublicId(cloudinaryUrl) {
+    const urlParts = cloudinaryUrl.split("/");
+    const fileName = urlParts[urlParts.length - 1];
+    return fileName.split(".")[0]; // Remove file extension
+}
 
 
 export {
