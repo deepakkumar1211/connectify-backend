@@ -4,7 +4,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
-import mongoose from "mongoose";
+import {mongoose, ObjectId} from "mongoose";
+import jwt from "jsonwebtoken"
 
 // const createPost = asyncHandler(async (req, res) => {
     
@@ -135,6 +136,24 @@ const createPost = asyncHandler(async (req, res) => {
 
 const getAllPosts = asyncHandler(async (req, res) => {
     try {
+        let userObjectId = null;
+
+        // Check for Authorization header
+        const token = req.cookies?.accessToken;
+        // console.log(token);
+        
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+                const userId = decoded._id; // Extract user ID from token
+                // console.log(userId);
+                
+                userObjectId = new mongoose.Types.ObjectId(userId);; // Convert string to ObjectId
+            } catch (error) {
+                console.error("Invalid token:", error.message);
+            }
+        }
+        
         const posts = await Post.aggregate([
             {
                 $sort: { createdAt: -1 }, // Sort posts in reverse order
@@ -151,12 +170,28 @@ const getAllPosts = asyncHandler(async (req, res) => {
                 $unwind: "$userDetails", // Flatten the userDetails array
             },
             {
+                $addFields: {
+                    likesCount: {
+                        $size: "$likes"
+                    },
+                    isLiked: {
+                        $cond: {
+                            if: {$in : [userObjectId, "$likes"]},
+                            then: true,
+                            else: false
+                        }
+                    }
+                }
+            },
+            {
                 $project: { // Select necessary fields
                     _id: 1,
                     postFile: 1,
                     description: 1,
                     likes: 1,
                     owner: 1,
+                    likesCount: 1,
+                    isLiked: 1,
                     createdAt: 1,
                     updatedAt: 1,
                     username: "$userDetails.username",
@@ -170,20 +205,15 @@ const getAllPosts = asyncHandler(async (req, res) => {
             throw new ApiError(404, "No posts found");
         }
 
-
-        return res.status(200).json({
-            statusCode: 200,
-            data: posts,
-            message: "Posts retrieved successfully",
-            success: true,
-        });
+        return res.status(200).json(
+            new ApiResponse(200, posts, "Posts retrieved successfully.")
+        );
     } catch (error) {
-        return res.status(error.statusCode || 500).json({
-            statusCode: error.statusCode || 500,
-            data: [],
-            message: error.message || "An error occurred",
-            success: false,
-        });
+        console.log(error);
+
+        return res.status(500).json(
+            new ApiResponse(500, {}, "Error in getting the post.")
+        );
     }
 });
 
