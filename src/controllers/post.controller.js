@@ -238,8 +238,56 @@ const deletePost = asyncHandler(async (req, res) => {
 });
 
 
+// Like or unlike a post
+const likePost = asyncHandler(async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+
+        if (!userId) {
+            throw new ApiError(401, "User not authenticated");
+        }
+
+        // Find the post by ID
+        const post = await Post.findById(postId);
+
+        if (!post) {
+            throw new ApiError(404, "Post not found");
+        }
+
+        // Check if user has already liked the post
+        const alreadyLiked = post.likes.includes(userId);
+
+        if (alreadyLiked) {
+            // Unlike the post
+            post.likes = post.likes.filter((like) => like.toString() !== userId);
+            await post.save();
+
+            return res.status(200).json(
+                new ApiResponse(200, post, "Post unliked successfully")
+            );
+        } else {
+            // Like the post
+            post.likes.push(userId);
+            await post.save();
+
+            return res.status(200).json(
+                new ApiResponse(200, post, "Post liked successfully")
+            );
+        }
+    } catch (error) {
+        console.log(error)
+        return res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error?.message || "Something went wrong")
+        );
+    }
+});
+
+
+
 export {
     createPost,
     getAllPosts,
-    deletePost
+    deletePost,
+    likePost
 }
