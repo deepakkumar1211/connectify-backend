@@ -6,7 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import mongoose from "mongoose";
 
-
+// post story controller
 const postStory = asyncHandler(async (req, res) => {
     try {
         const { description, visibility } = req.body;
@@ -70,6 +70,7 @@ const postStory = asyncHandler(async (req, res) => {
 });
 
 
+// get story controller
 const getStory = asyncHandler(async (req, res) => {
     try {
         const stories = await Story.aggregate([
@@ -140,9 +141,7 @@ const getStory = asyncHandler(async (req, res) => {
 });
 
 
-
-
-
+// delete story controller
 const deleteStory = asyncHandler(async (req, res) => {
     try {
         const { storyId } = req.params;
