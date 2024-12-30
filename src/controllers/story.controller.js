@@ -85,7 +85,10 @@ const getStory = asyncHandler(async (req, res) => {
                 },
             },
             {
-                $unwind: "$userDetails", // Flatten the userDetails array
+                $unwind: { // Flatten the userDetails array
+                    path: "$userDetails", 
+                    preserveNullAndEmptyArrays: false // Exclude stories with no matching user
+                },
             },
             {
                 $group: { // Group stories by user
@@ -108,7 +111,7 @@ const getStory = asyncHandler(async (req, res) => {
             {
                 $project: { // Format the response
                     _id: 0,
-                    storyOwner:"$_id", 
+                    storyOwner: "$_id", 
                     username: 1,
                     fullName: 1,
                     avatar: 1,
@@ -118,20 +121,24 @@ const getStory = asyncHandler(async (req, res) => {
         ]);
 
         if (!stories || stories.length === 0) {
-            throw new ApiError(404, "No stories found");
+            return res.status(200).json(
+                new ApiResponse(200, {}, "No stories found")
+            );
         }
 
-        return res.status(200).json({
-            statusCode: 200,
-            data: stories,
-            message: "Stories retrieved successfully",
-            success: true,
-        });
+        return res.status(200).json(
+            new ApiResponse(200, stories, "Stories retrieved successfully")
+        );
+
     } catch (error) {
         console.error("Error in getStory:", error);
-        throw new ApiError(500, "An error occurred while retrieving stories");
+        return res.status(500).json(
+            new ApiResponse(500, {}, "An error occurred while retrieving stories")
+        );
+        
     }
 });
+
 
 
 
