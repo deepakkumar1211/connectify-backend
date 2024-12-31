@@ -74,29 +74,37 @@ const postStory = asyncHandler(async (req, res) => {
 const getStory = asyncHandler(async (req, res) => {
     try {
         const stories = await Story.aggregate([
+            // Sort stories globally by creation time
             {
-                $sort: { createdAt: -1 }, // Sort stories by creation time
+                $sort: { createdAt: -1 },
             },
+
+            // Join with User collection
             {
-                $lookup: { // Join User collection
+                $lookup: {
                     from: "users",
                     localField: "storyOwner", // The field in Story referring to User
                     foreignField: "_id", // The field in User being referred to
                     as: "userDetails", // Output array field for user data
                 },
             },
+
+            // Unwind (Flatten) the userDetails array
             {
-                $unwind: { // Flatten the userDetails array
-                    path: "$userDetails", 
-                    preserveNullAndEmptyArrays: false // Exclude stories with no matching user
+                $unwind: {
+                    path: "$userDetails",
+                    preserveNullAndEmptyArrays: false, // Exclude stories with no matching user
                 },
             },
+
+            // Group stories by user and collect details
             {
-                $group: { // Group stories by user
+                $group: {
                     _id: "$storyOwner",
                     username: { $first: "$userDetails.username" },
                     fullName: { $first: "$userDetails.fullName" },
                     avatar: { $first: "$userDetails.avatar" },
+                    latestCreatedAt: { $max: "$createdAt" }, // Get the latest creation time in the group
                     stories: {
                         $push: {
                             _id: "$_id",
@@ -109,10 +117,26 @@ const getStory = asyncHandler(async (req, res) => {
                     },
                 },
             },
+
+            // Sort stories within each user group
             {
-                $project: { // Format the response
+                $addFields: {
+                    stories: {
+                        $sortArray: { input: "$stories", sortBy: { createdAt: -1 } }
+                    },
+                },
+            },
+
+            // Sort user groups by their latest story
+            {
+                $sort: { latestCreatedAt: -1 },
+            },
+
+            // Format the response
+            {
+                $project: {
                     _id: 0,
-                    storyOwner: "$_id", 
+                    storyOwner: "$_id",
                     username: 1,
                     fullName: 1,
                     avatar: 1,
@@ -123,7 +147,7 @@ const getStory = asyncHandler(async (req, res) => {
 
         if (!stories || stories.length === 0) {
             return res.status(200).json(
-                new ApiResponse(200, {}, "No stories found")
+                new ApiResponse(200, [], "No stories found")
             );
         }
 
@@ -134,9 +158,8 @@ const getStory = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error("Error in getStory:", error);
         return res.status(500).json(
-            new ApiResponse(500, {}, "An error occurred while retrieving stories")
+            new ApiResponse(500, null, "An error occurred while retrieving stories")
         );
-        
     }
 });
 
