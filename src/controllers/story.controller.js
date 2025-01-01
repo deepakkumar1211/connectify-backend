@@ -71,29 +71,119 @@ const postStory = asyncHandler(async (req, res) => {
 
 
 // get story controller
+// const getStory = asyncHandler(async (req, res) => {
+//     try {
+//         const stories = await Story.aggregate([
+//             // Sort stories globally by creation time
+//             {
+//                 $sort: { createdAt: -1 },
+//             },
+
+//             // Join with User collection
+//             {
+//                 $lookup: {
+//                     from: "users",
+//                     localField: "storyOwner", // The field in Story referring to User
+//                     foreignField: "_id", // The field in User being referred to
+//                     as: "userDetails", // Output array field for user data
+//                 },
+//             },
+
+//             // Unwind (Flatten) the userDetails array
+//             {
+//                 $unwind: {
+//                     path: "$userDetails",
+//                     preserveNullAndEmptyArrays: false, // Exclude stories with no matching user
+//                 },
+//             },
+
+//             // Group stories by user and collect details
+//             {
+//                 $group: {
+//                     _id: "$storyOwner",
+//                     username: { $first: "$userDetails.username" },
+//                     fullName: { $first: "$userDetails.fullName" },
+//                     avatar: { $first: "$userDetails.avatar" },
+//                     latestCreatedAt: { $max: "$createdAt" }, // Get the latest creation time in the group
+//                     stories: {
+//                         $push: {
+//                             _id: "$_id",
+//                             postFile: "$postFile",
+//                             description: "$description",
+//                             createdAt: "$createdAt",
+//                             updatedAt: "$updatedAt",
+//                             viewers: "$viewers",
+//                         },
+//                     },
+//                 },
+//             },
+
+//             // Sort stories within each user group
+//             {
+//                 $addFields: {
+//                     stories: {
+//                         $sortArray: { input: "$stories", sortBy: { createdAt: -1 } }
+//                     },
+//                 },
+//             },
+
+//             // Sort user groups by their latest story
+//             {
+//                 $sort: { latestCreatedAt: -1 },
+//             },
+
+//             // Format the response
+//             {
+//                 $project: {
+//                     _id: 0,
+//                     storyOwner: "$_id",
+//                     username: 1,
+//                     fullName: 1,
+//                     avatar: 1,
+//                     stories: 1,
+//                 },
+//             },
+//         ]);
+
+//         if (!stories || stories.length === 0) {
+//             return res.status(200).json(
+//                 new ApiResponse(200, [], "No stories found")
+//             );
+//         }
+
+//         return res.status(200).json(
+//             new ApiResponse(200, stories, "Stories retrieved successfully")
+//         );
+
+//     } catch (error) {
+//         console.error("Error in getStory:", error);
+//         return res.status(500).json(
+//             new ApiResponse(500, null, "An error occurred while retrieving stories")
+//         );
+//     }
+// });
+
 const getStory = asyncHandler(async (req, res) => {
     try {
         const stories = await Story.aggregate([
             // Sort stories globally by creation time
-            {
-                $sort: { createdAt: -1 },
-            },
+            { $sort: { createdAt: -1 } },
 
             // Join with User collection
             {
                 $lookup: {
                     from: "users",
-                    localField: "storyOwner", // The field in Story referring to User
-                    foreignField: "_id", // The field in User being referred to
-                    as: "userDetails", // Output array field for user data
+                    localField: "storyOwner",
+                    foreignField: "_id",
+                    as: "userDetails",
                 },
             },
 
-            // Unwind (Flatten) the userDetails array
+            // Unwind the userDetails array
             {
                 $unwind: {
                     path: "$userDetails",
-                    preserveNullAndEmptyArrays: false, // Exclude stories with no matching user
+                    preserveNullAndEmptyArrays: false,
                 },
             },
 
@@ -104,7 +194,7 @@ const getStory = asyncHandler(async (req, res) => {
                     username: { $first: "$userDetails.username" },
                     fullName: { $first: "$userDetails.fullName" },
                     avatar: { $first: "$userDetails.avatar" },
-                    latestCreatedAt: { $max: "$createdAt" }, // Get the latest creation time in the group
+                    latestCreatedAt: { $max: "$createdAt" },
                     stories: {
                         $push: {
                             _id: "$_id",
@@ -118,19 +208,15 @@ const getStory = asyncHandler(async (req, res) => {
                 },
             },
 
-            // Sort stories within each user group
+            // Reverse the order of stories within each user group
             {
                 $addFields: {
-                    stories: {
-                        $sortArray: { input: "$stories", sortBy: { createdAt: -1 } }
-                    },
+                    stories: { $reverseArray: "$stories" },
                 },
             },
 
             // Sort user groups by their latest story
-            {
-                $sort: { latestCreatedAt: -1 },
-            },
+            { $sort: { latestCreatedAt: -1 } },
 
             // Format the response
             {
@@ -145,16 +231,17 @@ const getStory = asyncHandler(async (req, res) => {
             },
         ]);
 
-        if (!stories || stories.length === 0) {
+        // Handle empty response case
+        if (!stories.length) {
             return res.status(200).json(
                 new ApiResponse(200, [], "No stories found")
             );
         }
 
+        // Return successful response
         return res.status(200).json(
             new ApiResponse(200, stories, "Stories retrieved successfully")
         );
-
     } catch (error) {
         console.error("Error in getStory:", error);
         return res.status(500).json(
@@ -162,6 +249,7 @@ const getStory = asyncHandler(async (req, res) => {
         );
     }
 });
+
 
 
 // delete story controller
