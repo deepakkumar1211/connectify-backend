@@ -420,7 +420,7 @@ const getProfileDetails = asyncHandler(async (req, res) => {
             },
             {
                 $lookup: { // Count following
-                    from: "followers",
+                    from: "subscriptions",
                     let: { userId: "$_id" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$follower", "$$userId"] } } },
@@ -477,6 +477,7 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                     },
                     isFollowing: { $gt: [{ $size: "$isFollowingStats" }, 0] }, // true if current user follows target
                     isFollowedBy: { $gt: [{ $size: "$isFollowedByStats" }, 0] }, // true if target user follows current user
+                    postCount: { $size: "$posts" }, // Count the number of posts
                 },
             },
             {
@@ -508,7 +509,6 @@ const getProfileDetails = asyncHandler(async (req, res) => {
         );
     }
 });
-
 
 
 export {
