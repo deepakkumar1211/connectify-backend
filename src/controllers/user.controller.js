@@ -4,6 +4,7 @@ import {User} from "../models/user.model.js"
 import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
+import mongoose from "mongoose"
 
 
 
@@ -379,6 +380,137 @@ function extractPublicId(cloudinaryUrl) {
 }
 
 
+const getProfileDetails = asyncHandler(async (req, res) => {
+    try {
+        const { userId } = req.params; // Target user's ID
+        const currentUserId = req.user.id; // Current logged-in user's ID (from middleware)
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+        const currentUserObjectId = new mongoose.Types.ObjectId(currentUserId);
+
+        const profileDetails = await User.aggregate([
+            {
+                $match: { _id: userObjectId }, // Match the target user
+            },
+            {
+                $lookup: { // Get the stories of the user
+                    from: "stories",
+                    localField: "_id",
+                    foreignField: "owner",
+                    as: "stories",
+                },
+            },
+            {
+                $lookup: { // Get the posts of the user
+                    from: "posts",
+                    localField: "_id",
+                    foreignField: "owner",
+                    as: "posts",
+                },
+            },
+            {
+                $lookup: { // Count followers
+                    from: "subscriptions",
+                    let: { userId: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$following", "$$userId"] } } },
+                        { $count: "followerCount" },
+                    ],
+                    as: "followerStats",
+                },
+            },
+            {
+                $lookup: { // Count following
+                    from: "followers",
+                    let: { userId: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$follower", "$$userId"] } } },
+                        { $count: "followingCount" },
+                    ],
+                    as: "followingStats",
+                },
+            },
+            {
+                $lookup: { // Check if current user follows the target user
+                    from: "subscriptions",
+                    let: { userId: "$_id", currentUserId },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$follower", "$$currentUserId"] },
+                                        { $eq: ["$following", "$$userId"] },
+                                    ],
+                                },
+                            },
+                        },
+                    ],
+                    as: "isFollowingStats",
+                },
+            },
+            {
+                $lookup: { // Check if target user follows the current user
+                    from: "subscriptions",
+                    let: { userId: "$_id", currentUserId },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$follower", "$$userId"] },
+                                        { $eq: ["$following", "$$currentUserId"] },
+                                    ],
+                                },
+                            },
+                        },
+                    ],
+                    as: "isFollowedByStats",
+                },
+            },
+            {
+                $addFields: {
+                    followerCount: {
+                        $ifNull: [{ $arrayElemAt: ["$followerStats.followerCount", 0] }, 0],
+                    },
+                    followingCount: {
+                        $ifNull: [{ $arrayElemAt: ["$followingStats.followingCount", 0] }, 0],
+                    },
+                    isFollowing: { $gt: [{ $size: "$isFollowingStats" }, 0] }, // true if current user follows target
+                    isFollowedBy: { $gt: [{ $size: "$isFollowedByStats" }, 0] }, // true if target user follows current user
+                },
+            },
+            {
+                $project: {
+                    password: 0,
+                    refreshToken: 0,
+                    __v: 0,
+                    "stories.__v": 0,
+                    "posts.__v": 0,
+                    followerStats: 0,
+                    followingStats: 0,
+                    isFollowingStats: 0,
+                    isFollowedByStats: 0,
+                },
+            },
+        ]);
+
+        if (!profileDetails || profileDetails.length === 0) {
+            throw new ApiError(404, "User not found");
+        }
+
+        return res.status(200).json(
+            new ApiResponse(200, profileDetails[0], "Profile details retrieved successfully.")
+        );
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json(
+            new ApiResponse(500, {}, "Error in getting the profile details.")
+        );
+    }
+});
+
+
+
 export {
     registerUser,
     loginUser,
@@ -389,6 +521,6 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-
+    getProfileDetails
 
 }

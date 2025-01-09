@@ -6,7 +6,8 @@ import {
     refreshAccessToken,
     changeCurrentPassword,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getProfileDetails
     } from "../controllers/user.controller.js";
 import {upload} from "../middlewares/multer.middleware.js"
 import {verifyJWT} from "../middlewares/auth.middleware.js"
@@ -48,5 +49,7 @@ router.route("/update-cover-image").patch(verifyJWT,
     upload.single("coverImage"),
     updateUserCoverImage
 )
+
+router.route("/profile/:userId").get(verifyJWT, getProfileDetails)
 
 export default router
