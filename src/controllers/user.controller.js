@@ -1,6 +1,7 @@
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {ApiError} from "../utils/ApiError.js"
 import {User} from "../models/user.model.js"
+import {Follower} from "../models/follower.model.js"
 import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
@@ -382,34 +383,20 @@ function extractPublicId(cloudinaryUrl) {
 
 const getProfileDetails = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.params; // Target user's ID
-        const currentUserId = req.user.id; // Current logged-in user's ID (from middleware)
+        const { userId } = req.params;
+        const currentUserId = req.user.id;
+
+        // Convert IDs to ObjectId
         const userObjectId = new mongoose.Types.ObjectId(userId);
         const currentUserObjectId = new mongoose.Types.ObjectId(currentUserId);
 
         const profileDetails = await User.aggregate([
+            { $match: { _id: userObjectId } },
+            { $lookup: { from: "stories", localField: "_id", foreignField: "owner", as: "stories" } },
+            { $lookup: { from: "posts", localField: "_id", foreignField: "owner", as: "posts" } },
             {
-                $match: { _id: userObjectId }, // Match the target user
-            },
-            {
-                $lookup: { // Get the stories of the user
-                    from: "stories",
-                    localField: "_id",
-                    foreignField: "owner",
-                    as: "stories",
-                },
-            },
-            {
-                $lookup: { // Get the posts of the user
-                    from: "posts",
-                    localField: "_id",
-                    foreignField: "owner",
-                    as: "posts",
-                },
-            },
-            {
-                $lookup: { // Count followers
-                    from: "subscriptions",
+                $lookup: {
+                    from: "followers",
                     let: { userId: "$_id" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$following", "$$userId"] } } },
@@ -419,8 +406,8 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                 },
             },
             {
-                $lookup: { // Count following
-                    from: "subscriptions",
+                $lookup: {
+                    from: "followers",
                     let: { userId: "$_id" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$follower", "$$userId"] } } },
@@ -430,15 +417,15 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                 },
             },
             {
-                $lookup: { // Check if current user follows the target user
-                    from: "subscriptions",
+                $lookup: {
+                    from: "followers",
                     let: { userId: "$_id", currentUserId },
                     pipeline: [
                         {
                             $match: {
                                 $expr: {
                                     $and: [
-                                        { $eq: ["$follower", "$$currentUserId"] },
+                                        { $eq: ["$follower", new mongoose.Types.ObjectId(currentUserId)] },
                                         { $eq: ["$following", "$$userId"] },
                                     ],
                                 },
@@ -449,8 +436,8 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                 },
             },
             {
-                $lookup: { // Check if target user follows the current user
-                    from: "subscriptions",
+                $lookup: {
+                    from: "followers",
                     let: { userId: "$_id", currentUserId },
                     pipeline: [
                         {
@@ -458,7 +445,7 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                                 $expr: {
                                     $and: [
                                         { $eq: ["$follower", "$$userId"] },
-                                        { $eq: ["$following", "$$currentUserId"] },
+                                        { $eq: ["$following",new mongoose.Types.ObjectId(currentUserId)] },
                                     ],
                                 },
                             },
@@ -469,15 +456,11 @@ const getProfileDetails = asyncHandler(async (req, res) => {
             },
             {
                 $addFields: {
-                    followerCount: {
-                        $ifNull: [{ $arrayElemAt: ["$followerStats.followerCount", 0] }, 0],
-                    },
-                    followingCount: {
-                        $ifNull: [{ $arrayElemAt: ["$followingStats.followingCount", 0] }, 0],
-                    },
-                    isFollowing: { $gt: [{ $size: "$isFollowingStats" }, 0] }, // true if current user follows target
-                    isFollowedBy: { $gt: [{ $size: "$isFollowedByStats" }, 0] }, // true if target user follows current user
-                    postCount: { $size: "$posts" }, // Count the number of posts
+                    followerCount: { $ifNull: [{ $arrayElemAt: ["$followerStats.followerCount", 0] }, 0] },
+                    followingCount: { $ifNull: [{ $arrayElemAt: ["$followingStats.followingCount", 0] }, 0] },
+                    isFollowing: { $gt: [{ $size: "$isFollowingStats" }, 0] },
+                    isFollowedBy: { $gt: [{ $size: "$isFollowedByStats" }, 0] },
+                    postCount: { $size: "$posts" },
                 },
             },
             {
@@ -511,6 +494,56 @@ const getProfileDetails = asyncHandler(async (req, res) => {
 });
 
 
+const followUnfollowUser = asyncHandler(async (req, res) => {
+    try {
+        const { userId } = req.params; // ID of the user to follow/unfollow
+        const currentUserId = req.user.id; // ID of the logged-in user from middleware
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json(
+                new ApiResponse(400, null, "Invalid user ID.")
+            );
+        }
+
+        if (userId === currentUserId) {
+            return res.status(400).json(
+                new ApiResponse(400, null, "You cannot follow or unfollow yourself.")
+            );
+        }
+
+        // Check if the subscription already exists
+        const existingSubscription = await Follower.findOne({
+            follower: currentUserId,
+            following: userId,
+        });
+
+        if (existingSubscription) {
+            // Unfollow the user
+            await Follower.deleteOne({ _id: existingSubscription._id });
+
+            return res.status(200).json(
+                new ApiResponse(200, null, "User unfollowed successfully.")
+            );
+        }
+
+        // Follow the user
+        await Follower.create({
+            follower: currentUserId,
+            following: userId,
+        });
+
+        return res.status(200).json(
+            new ApiResponse(200, null, "User followed successfully.")
+        );
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json(
+            new ApiResponse(500, null, "An error occurred while processing your request.")
+        );
+    }
+});
+
+
 export {
     registerUser,
     loginUser,
@@ -521,6 +554,7 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    getProfileDetails
+    getProfileDetails,
+    followUnfollowUser
 
 }
