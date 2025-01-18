@@ -139,8 +139,11 @@ const getAllPosts = asyncHandler(async (req, res) => {
         let userObjectId = null;
 
         // Check for Authorization header
-        const token = req.cookies?.accessToken;
+        // const token = req.cookies?.accessToken;
         // console.log(token);
+
+        let token = req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
+        console.log(token);
         
         if (token) {
             try {
@@ -148,7 +151,7 @@ const getAllPosts = asyncHandler(async (req, res) => {
                 const userId = decoded._id; // Extract user ID from token
                 // console.log(userId);
                 
-                userObjectId = new mongoose.Types.ObjectId(userId);; // Convert string to ObjectId
+                userObjectId = new mongoose.Types.ObjectId(userId);// Convert string to ObjectId
             } catch (error) {
                 console.error("Invalid token:", error.message);
             }
