@@ -9,7 +9,7 @@ import {
     updateUserCoverImage,
     getProfileDetails,
     followUnfollowUser,
-    searchUsersByKeyword
+    searchUsers
     } from "../controllers/user.controller.js";
 import {upload} from "../middlewares/multer.middleware.js"
 import {verifyJWT} from "../middlewares/auth.middleware.js"
@@ -56,6 +56,6 @@ router.route("/profile/:userId").get(verifyJWT, getProfileDetails)
 
 router.route("/follow/:userId").post(verifyJWT, followUnfollowUser)
 
-router.route("/search-by-username").get(verifyJWT, searchUsersByKeyword)
+router.route("/search-user").get(verifyJWT, searchUsers)
 
 export default router

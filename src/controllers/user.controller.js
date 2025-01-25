@@ -566,7 +566,7 @@ const followUnfollowUser = asyncHandler(async (req, res) => {
 });
 
 
-const searchUsersByKeyword = asyncHandler(async (req, res) => {
+const searchUsers = asyncHandler(async (req, res) => {
     try {
         const { keyword } = req.query;
 
@@ -577,13 +577,13 @@ const searchUsersByKeyword = asyncHandler(async (req, res) => {
         const users = await User.find(
             {
                 $or: [
-                    { username: { $regex: keyword, $options: "i" } }, // Match username (partial or full, case-insensitive)
-                    { fullName: { $regex: keyword, $options: "i" } }, // Match fullName (partial or full, case-insensitive)
+                    { username: { $regex: keyword, $options: "i" } },
+                    { fullName: { $regex: keyword, $options: "i" } },
                 ],
             },
-            { password: 0, refreshToken: 0, __v: 0 } // Exclude sensitive fields
+            { password: 0, refreshToken: 0, __v: 0 }
         )
-        .limit(20); // Limit results to 20 users
+        .limit(20);
 
         if (users.length === 0) {
             return res.status(404).json(
@@ -615,6 +615,5 @@ export {
     updateUserCoverImage,
     getProfileDetails,
     followUnfollowUser,
-    searchUsersByKeyword
-
+    searchUsers
 }
