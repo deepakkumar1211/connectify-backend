@@ -112,38 +112,13 @@ const createPost = asyncHandler(async (req, res) => {
     );
 });
 
-
-
-// const getAllPosts = asyncHandler (async (req, res) => {
-//     try {
-//         // const posts = await Post.find();
-//         const posts = await Post.find().sort({ createdAt: -1 }); // get data in reverse order
-//         if (!posts || posts.length === 0) {
-//             throw new ApiError(404, "No posts found");
-//         }
-
-//         return res
-//             .status(200)
-//             .json(new ApiResponse(200, posts, "Posts retrieved successfully"));
-
-//     } catch (error) {
-//         return res
-//             .status(error.statusCode || 500)
-//             .json(new ApiResponse(error.statusCode || 500, {}, error.message || "An error occurred"));
-//     }
-// })
-
-
 const getAllPosts = asyncHandler(async (req, res) => {
     try {
         let userObjectId = null;
 
         // Check for Authorization header
-        // const token = req.cookies?.accessToken;
-        // console.log(token);
-
         let token = req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
-        console.log(token);
+        // console.log(token);
         
         if (token) {
             try {

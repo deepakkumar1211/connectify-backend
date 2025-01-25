@@ -388,12 +388,32 @@ const getProfileDetails = asyncHandler(async (req, res) => {
 
         // Convert IDs to ObjectId
         const userObjectId = new mongoose.Types.ObjectId(userId);
-        const currentUserObjectId = new mongoose.Types.ObjectId(currentUserId);
 
         const profileDetails = await User.aggregate([
             { $match: { _id: userObjectId } },
-            { $lookup: { from: "stories", localField: "_id", foreignField: "owner", as: "stories" } },
-            { $lookup: { from: "posts", localField: "_id", foreignField: "owner", as: "posts" } },
+            {
+                $lookup: { 
+                    from: "stories", 
+                    localField: "_id", 
+                    foreignField: "owner", 
+                    as: "stories" 
+                } 
+            },
+            { 
+                $lookup: { 
+                    from: "posts", 
+                    localField: "_id", 
+                    foreignField: "owner", 
+                    as: "posts" 
+                } 
+            },
+            {
+                $addFields: {
+                    // Sort stories and posts by creation timestamp in descending order
+                    stories: { $slice: [{ $sortArray: { input: "$stories", sortBy: { createdAt: -1 } } }, 1] },
+                    posts: { $slice: [{ $sortArray: { input: "$posts", sortBy: { createdAt: -1 } } }, 1] },
+                },
+            },
             {
                 $lookup: {
                     from: "followers",
@@ -445,7 +465,7 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                                 $expr: {
                                     $and: [
                                         { $eq: ["$follower", "$$userId"] },
-                                        { $eq: ["$following",new mongoose.Types.ObjectId(currentUserId)] },
+                                        { $eq: ["$following", new mongoose.Types.ObjectId(currentUserId)] },
                                     ],
                                 },
                             },
@@ -492,6 +512,7 @@ const getProfileDetails = asyncHandler(async (req, res) => {
         );
     }
 });
+
 
 
 const followUnfollowUser = asyncHandler(async (req, res) => {
