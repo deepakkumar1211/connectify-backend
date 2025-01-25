@@ -392,27 +392,27 @@ const getProfileDetails = asyncHandler(async (req, res) => {
         const profileDetails = await User.aggregate([
             { $match: { _id: userObjectId } },
             {
-                $lookup: { 
-                    from: "stories", 
-                    localField: "_id", 
-                    foreignField: "owner", 
-                    as: "stories" 
-                } 
+                $lookup: {
+                    from: "stories",
+                    localField: "_id",
+                    foreignField: "owner",
+                    as: "stories"
+                }
             },
-            { 
-                $lookup: { 
-                    from: "posts", 
-                    localField: "_id", 
-                    foreignField: "owner", 
-                    as: "posts" 
-                } 
+            {
+                $lookup: {
+                    from: "posts",
+                    localField: "_id",
+                    foreignField: "owner",
+                    as: "posts"
+                }
             },
             {
                 $addFields: {
                     // Sort stories and posts by creation timestamp in descending order
-                    stories: { $slice: [{ $sortArray: { input: "$stories", sortBy: { createdAt: -1 } } }, 1] },
-                    posts: { $slice: [{ $sortArray: { input: "$posts", sortBy: { createdAt: -1 } } }, 1] },
-                },
+                    stories: { $sortArray: { input: "$stories", sortBy: { createdAt: -1 } } },
+                    posts: { $sortArray: { input: "$posts", sortBy: { createdAt: -1 } } }
+                }
             },
             {
                 $lookup: {
@@ -420,10 +420,10 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                     let: { userId: "$_id" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$following", "$$userId"] } } },
-                        { $count: "followerCount" },
+                        { $count: "followerCount" }
                     ],
-                    as: "followerStats",
-                },
+                    as: "followerStats"
+                }
             },
             {
                 $lookup: {
@@ -431,10 +431,10 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                     let: { userId: "$_id" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$follower", "$$userId"] } } },
-                        { $count: "followingCount" },
+                        { $count: "followingCount" }
                     ],
-                    as: "followingStats",
-                },
+                    as: "followingStats"
+                }
             },
             {
                 $lookup: {
@@ -446,14 +446,14 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                                 $expr: {
                                     $and: [
                                         { $eq: ["$follower", new mongoose.Types.ObjectId(currentUserId)] },
-                                        { $eq: ["$following", "$$userId"] },
-                                    ],
-                                },
-                            },
-                        },
+                                        { $eq: ["$following", "$$userId"] }
+                                    ]
+                                }
+                            }
+                        }
                     ],
-                    as: "isFollowingStats",
-                },
+                    as: "isFollowingStats"
+                }
             },
             {
                 $lookup: {
@@ -465,14 +465,14 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                                 $expr: {
                                     $and: [
                                         { $eq: ["$follower", "$$userId"] },
-                                        { $eq: ["$following", new mongoose.Types.ObjectId(currentUserId)] },
-                                    ],
-                                },
-                            },
-                        },
+                                        { $eq: ["$following", new mongoose.Types.ObjectId(currentUserId)] }
+                                    ]
+                                }
+                            }
+                        }
                     ],
-                    as: "isFollowedByStats",
-                },
+                    as: "isFollowedByStats"
+                }
             },
             {
                 $addFields: {
@@ -480,8 +480,8 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                     followingCount: { $ifNull: [{ $arrayElemAt: ["$followingStats.followingCount", 0] }, 0] },
                     isFollowing: { $gt: [{ $size: "$isFollowingStats" }, 0] },
                     isFollowedBy: { $gt: [{ $size: "$isFollowedByStats" }, 0] },
-                    postCount: { $size: "$posts" },
-                },
+                    postCount: { $size: "$posts" }
+                }
             },
             {
                 $project: {
@@ -493,9 +493,9 @@ const getProfileDetails = asyncHandler(async (req, res) => {
                     followerStats: 0,
                     followingStats: 0,
                     isFollowingStats: 0,
-                    isFollowedByStats: 0,
-                },
-            },
+                    isFollowedByStats: 0
+                }
+            }
         ]);
 
         if (!profileDetails || profileDetails.length === 0) {
@@ -512,6 +512,7 @@ const getProfileDetails = asyncHandler(async (req, res) => {
         );
     }
 });
+
 
 
 
