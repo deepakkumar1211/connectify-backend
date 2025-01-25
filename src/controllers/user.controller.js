@@ -566,6 +566,43 @@ const followUnfollowUser = asyncHandler(async (req, res) => {
 });
 
 
+const searchUsersByKeyword = asyncHandler(async (req, res) => {
+    try {
+        const { keyword } = req.query;
+
+        if (!keyword) {
+            throw new ApiError(400, "Keyword parameter is required");
+        }
+
+        const users = await User.find(
+            {
+                $or: [
+                    { username: { $regex: keyword, $options: "i" } }, // Match username (partial or full, case-insensitive)
+                    { fullName: { $regex: keyword, $options: "i" } }, // Match fullName (partial or full, case-insensitive)
+                ],
+            },
+            { password: 0, refreshToken: 0, __v: 0 } // Exclude sensitive fields
+        )
+        .limit(20); // Limit results to 20 users
+
+        if (users.length === 0) {
+            return res.status(404).json(
+                new ApiResponse(404, [], "No users found matching the keyword.")
+            );
+        }
+
+        return res.status(200).json(
+            new ApiResponse(200, users, "Users retrieved successfully.")
+        );
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json(
+            new ApiResponse(500, {}, "Error occurred while searching for users.")
+        );
+    }
+});
+
+
 export {
     registerUser,
     loginUser,
@@ -577,6 +614,7 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getProfileDetails,
-    followUnfollowUser
+    followUnfollowUser,
+    searchUsersByKeyword
 
 }
