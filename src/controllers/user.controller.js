@@ -657,8 +657,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
     // Hash password before saving
     if (password) {
-        const saltRounds = 10;
-        user.password = await bcrypt.hash(password, saltRounds);
+        user.password = await bcrypt.hash(password, 10);
     }
 
     // Save the updated user
