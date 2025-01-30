@@ -657,11 +657,11 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
     // Hash password before saving
     if (password) {
-        user.password = await bcrypt.hash(password, 10);
+        user.password = password
     }
 
     // Save the updated user
-    await user.save();
+    await user.save({validateBeforeSave: false});
 
     return res.status(200).json(new ApiResponse(200, user, "Profile updated successfully"));
 });
