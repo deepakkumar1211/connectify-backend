@@ -6,6 +6,7 @@ import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose"
+import bcrypt from "bcrypt";
 
 
 
@@ -614,80 +615,57 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         return res.status(404).json(new ApiResponse(404, {}, "User not found"));
     }
 
-    // Prepare update fields
-    let updateFields = {};
-
-    // Check for changes in username
-    if (username ) {
-        // Check if the new username already exists in the database
+    // Check for username update
+    if (username) {
         const existingUser = await User.findOne({ username });
         if (existingUser) {
             return res.status(409).json(new ApiResponse(409, {}, "Username already exists"));
         }
-        updateFields.username = username.toLowerCase();
+        user.username = username.toLowerCase();
     }
 
     // Handle avatar and coverImage file uploads
     if (req.files?.avatar) {
         const fileBuffer = req.files.avatar[0].buffer;
-
-        // Delete existing avatar from Cloudinary if exists
         if (user.avatar) {
-            const publicId = extractPublicId(user.avatar); // Extract public ID from URL
-            try {
-                await deleteFromCloudinary(publicId);
-            } catch (error) {
-                return res.status(500).json(new ApiResponse(500, null, "Failed to delete existing avatar: " + error.message));
-            }
+            const publicId = extractPublicId(user.avatar);
+            await deleteFromCloudinary(publicId);
         }
-
-        // Upload new avatar to Cloudinary
         const avatarUpload = await uploadOnCloudinary(fileBuffer, req.files.avatar[0].mimetype);
         if (!avatarUpload.url) {
             return res.status(500).json(new ApiResponse(500, null, "Error uploading avatar image"));
         }
-
-        updateFields.avatar = avatarUpload.url;
+        user.avatar = avatarUpload.url;
     }
 
     if (req.files?.coverImage) {
         const fileBuffer = req.files.coverImage[0].buffer;
-
-        // Delete existing coverImage from Cloudinary if exists
         if (user.coverImage) {
-            const publicId = extractPublicId(user.coverImage); // Extract public ID from URL
-            try {
-                await deleteFromCloudinary(publicId);
-            } catch (error) {
-                return res.status(500).json(new ApiResponse(500, null, "Failed to delete existing cover image: " + error.message));
-            }
+            const publicId = extractPublicId(user.coverImage);
+            await deleteFromCloudinary(publicId);
         }
-
-        // Upload new coverImage to Cloudinary
         const coverImageUpload = await uploadOnCloudinary(fileBuffer, req.files.coverImage[0].mimetype);
         if (!coverImageUpload.url) {
             return res.status(500).json(new ApiResponse(500, null, "Error uploading cover image"));
         }
-
-        updateFields.coverImage = coverImageUpload.url;
+        user.coverImage = coverImageUpload.url;
     }
 
     // Update other profile fields
-    if (fullName) updateFields.fullName = fullName;
-    if (bio) updateFields.bio = bio;
-    if (password) updateFields.password = password; // Password will be hashed automatically
+    if (fullName) user.fullName = fullName;
+    if (bio) user.bio = bio;
 
-    // No changes detected
-    if (Object.keys(updateFields).length === 0) {
-        return res.status(400).json(new ApiResponse(400, {}, "No changes detected"));
+    // Hash password before saving
+    if (password) {
+        const saltRounds = 10;
+        user.password = await bcrypt.hash(password, saltRounds);
     }
 
-    // Update user profile in DB
-    const updatedUser = await User.findByIdAndUpdate(userId, { $set: updateFields }, { new: true, runValidators: true }).select("-password -refreshToken");
+    // Save the updated user
+    await user.save();
 
-    return res.status(200).json(new ApiResponse(200, updatedUser, "Profile updated successfully"));
+    return res.status(200).json(new ApiResponse(200, user, "Profile updated successfully"));
 });
-
 
 
 export {
