@@ -9,7 +9,8 @@ import {
     updateUserCoverImage,
     getProfileDetails,
     followUnfollowUser,
-    searchUsers
+    searchUsers,
+    updateUserProfile
     } from "../controllers/user.controller.js";
 import {upload} from "../middlewares/multer.middleware.js"
 import {verifyJWT} from "../middlewares/auth.middleware.js"
@@ -57,5 +58,8 @@ router.route("/profile/:userId").get(verifyJWT, getProfileDetails)
 router.route("/follow/:userId").post(verifyJWT, followUnfollowUser)
 
 router.route("/search-user").get(verifyJWT, searchUsers)
+
+router.route("/update-profile")
+    .put(verifyJWT, upload.fields([{ name: "avatar", maxCount: 1 }, { name: "coverImage", maxCount: 1 }]), updateUserProfile);
 
 export default router

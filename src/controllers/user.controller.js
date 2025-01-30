@@ -603,6 +603,91 @@ const searchUsers = asyncHandler(async (req, res) => {
 });
 
 
+// Update user profile 
+const updateUserProfile = asyncHandler(async (req, res) => {
+    const { username, fullName, password, bio } = req.body;
+    const userId = req.user.id; // Get user ID from JWT
+
+    // Fetch current user
+    const user = await User.findById(userId).select("-password -refreshToken");
+    if (!user) {
+        return res.status(404).json(new ApiResponse(404, {}, "User not found"));
+    }
+
+    // Prepare update fields
+    let updateFields = {};
+
+    // Check for changes in username
+    if (username && username !== user.username) {
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(409).json(new ApiResponse(409, {}, "Username already exists"));
+        }
+        updateFields.username = username.toLowerCase();
+    }
+
+    // Handle avatar and coverImage file uploads
+    if (req.files?.avatar) {
+        const fileBuffer = req.files.avatar[0].buffer;
+
+        // Delete existing avatar from Cloudinary if exists
+        if (user.avatar) {
+            const publicId = extractPublicId(user.avatar); // Extract public ID from URL
+            try {
+                await deleteFromCloudinary(publicId);
+            } catch (error) {
+                return res.status(500).json(new ApiResponse(500, null, "Failed to delete existing avatar: " + error.message));
+            }
+        }
+
+        // Upload new avatar to Cloudinary
+        const avatarUpload = await uploadOnCloudinary(fileBuffer, req.files.avatar[0].mimetype);
+        if (!avatarUpload.url) {
+            return res.status(500).json(new ApiResponse(500, null, "Error uploading avatar image"));
+        }
+
+        updateFields.avatar = avatarUpload.url;
+    }
+
+    if (req.files?.coverImage) {
+        const fileBuffer = req.files.coverImage[0].buffer;
+
+        // Delete existing coverImage from Cloudinary if exists
+        if (user.coverImage) {
+            const publicId = extractPublicId(user.coverImage); // Extract public ID from URL
+            try {
+                await deleteFromCloudinary(publicId);
+            } catch (error) {
+                return res.status(500).json(new ApiResponse(500, null, "Failed to delete existing cover image: " + error.message));
+            }
+        }
+
+        // Upload new coverImage to Cloudinary
+        const coverImageUpload = await uploadOnCloudinary(fileBuffer, req.files.coverImage[0].mimetype);
+        if (!coverImageUpload.url) {
+            return res.status(500).json(new ApiResponse(500, null, "Error uploading cover image"));
+        }
+
+        updateFields.coverImage = coverImageUpload.url;
+    }
+
+    // Update other profile fields
+    if (fullName) updateFields.fullName = fullName;
+    if (bio) updateFields.bio = bio;
+    if (password) updateFields.password = password;
+
+    // No changes detected
+    if (Object.keys(updateFields).length === 0) {
+        return res.status(400).json(new ApiResponse(400, {}, "No changes detected"));
+    }
+
+    // Update user profile in DB
+    const updatedUser = await User.findByIdAndUpdate(userId, { $set: updateFields }, { new: true, runValidators: true }).select("-password -refreshToken");
+
+    return res.status(200).json(new ApiResponse(200, updatedUser, "Profile updated successfully"));
+});
+
+
 export {
     registerUser,
     loginUser,
@@ -615,5 +700,6 @@ export {
     updateUserCoverImage,
     getProfileDetails,
     followUnfollowUser,
-    searchUsers
+    searchUsers,
+    updateUserProfile
 }
