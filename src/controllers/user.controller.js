@@ -605,7 +605,7 @@ const searchUsers = asyncHandler(async (req, res) => {
 
 // Update user profile 
 const updateUserProfile = asyncHandler(async (req, res) => {
-    const { username, fullName, password, bio } = req.body;
+    const { username, fullName, avatar, coverImage, password, bio } = req.body;
     const userId = req.user.id; // Get user ID from JWT
 
     // Fetch current user
@@ -618,7 +618,8 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     let updateFields = {};
 
     // Check for changes in username
-    if (username && username !== user.username) {
+    if (username ) {
+        // Check if the new username already exists in the database
         const existingUser = await User.findOne({ username });
         if (existingUser) {
             return res.status(409).json(new ApiResponse(409, {}, "Username already exists"));
@@ -674,7 +675,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     // Update other profile fields
     if (fullName) updateFields.fullName = fullName;
     if (bio) updateFields.bio = bio;
-    if (password) updateFields.password = password;
+    if (password) updateFields.password = password; // Password will be hashed automatically
 
     // No changes detected
     if (Object.keys(updateFields).length === 0) {
@@ -686,6 +687,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
     return res.status(200).json(new ApiResponse(200, updatedUser, "Profile updated successfully"));
 });
+
 
 
 export {
